@@ -19,19 +19,20 @@ __all__ = [
 
 # calendar and JD date of start of several "Saturn years"
 _sy_list = dict((
-    (0, {"date":"1921-04-12 00:26:26.287291050", "JD":2422791.5183598064}),
-    (1, {"date":"1950-09-21 19:02:45.138775468", "JD":2433546.293577995}),
-    (2, {"date":"1980-03-03 16:12:48.102177799", "JD":2444302.175556738}),
-    (3, {"date":"2009-08-11 02:04:25.416794062", "JD":2455054.586405287}),
-    (4, {"date":"2039-01-22 19:51:58.221873760", "JD":2465811.3277571974}),
-    (5, {"date":"2068-06-29 08:45:59.446648121", "JD":2476561.865271373}),
-    (6, {"date":"2097-12-13 07:54:51.884071350", "JD":2487320.829767177}),
-    (7, {"date":"2127-05-21 00:44:15.628328323", "JD":2498070.530736439}),
-    (8, {"date":"2156-11-05 03:53:00.718159676", "JD":2508831.6618138677}),
+    (0, {"date":"1921-04-12 00:26:26.287291050", "JDUT":2422791.5183598064}),
+    (1, {"date":"1950-09-21 19:02:45.138775468", "JDUT":2433546.293577995}),
+    (2, {"date":"1980-03-03 16:12:48.102177799", "JDUT":2444302.175556738}),
+    (3, {"date":"2009-08-11 02:04:25.416794062", "JDUT":2455054.586405287}),
+    (4, {"date":"2039-01-22 19:51:58.221873760", "JDUT":2465811.3277571974}),
+    (5, {"date":"2068-06-29 08:45:59.446648121", "JDUT":2476561.865271373}),
+    (6, {"date":"2097-12-13 07:54:51.884071350", "JDUT":2487320.829767177}),
+    (7, {"date":"2127-05-21 00:44:15.628328323", "JDUT":2498070.530736439}),
+    (8, {"date":"2156-11-05 03:53:00.718159676", "JDUT":2508831.6618138677}),
     ))
 
 # DataFrame holding the date each "Saturn year" begins
 dfsy = pd.DataFrame.from_dict(_sy_list, orient='index').rename_axis(index="SY")
+dfsy['date'] = pd.to_datetime(dfsy['date'])
 
 #ephem_file = "saturn-from-titan-50_70.txt"
 ephem_file = "saturn-Ls-50_70.txt"
@@ -77,11 +78,24 @@ def parse_ephem(s):
         df["Date_UT_HRMNSCfff"] = pd.to_datetime(df["Date_UT_HRMNSCfff"])
     return df[[c for c in df.columns if "Unnamed" not in c]]
 
+def make_df_Ls2SY(df):
+    dfa = pd.concat((df.copy(), dfsy.reset_index())).sort_values('JDUT')
+    #dfa = df.copy().merge(dfsy.reset_index()[['JDUT','date','SY']], how='outer',
+    #                    on=['date','JDUT'], sort=True)
+    dfa["SY"] = dfa["SY"].ffill()
+    dfa = dfa.dropna().reset_index(drop=True)
+    dfa["Ls2"] = dfa["Ls"] + 360*(dfa["SY"]-1)
+    dfa["SCET"] = (dfa.date - pd.to_datetime("1970")).dt.total_seconds()
+    return dfa[['date','JDUT','SCET','Ls2','Ls','SY']]
+
+
+def make_Ls_df2(df):
+    df = df.rename(columns={"Date_UT_HRMNSCfff":"date",
+                                 "App_Lon_Sun":"Ls",
+                                 "Date_JDUT":"JDUT"})
+    return make_df_Ls2SY(df)
+
 def make_Ls_df(df):
-    #dfa = df.rename(columns={"Date_UT_HRMNSCfff":"date",
-    #                             "App_Lon_Sun":"Ls",
-    #                             "Date_JDUT":"JDUT"})
-    #return dfa
     # find first Ls zero-crossing in DataFrame to find beginning Saturn year
     # should be 9-22-1950
     # everything prior is negative
@@ -102,40 +116,39 @@ def make_Ls_df(df):
     return dfa
 
 def load_ephem(fname=ephem_file):
-    return make_Ls_df(parse_ephem(scan_ephem(fname)))
+    return make_Ls_df2(parse_ephem(scan_ephem(fname)))
 
 def save_csv(df, fname="saturn-Ls.csv"):
-    df.drop(columns=["Ls", "SY", "SCET"])[["date", "JDUT", "Ls2"]].\
+    df.drop(columns=["Ls2", "SY", "SCET"])[["date", "JDUT", "Ls"]].\
       to_csv(fname, index=False)
 def load_Ls_csv(fname="saturn-Ls.csv"):
     dfa = pd.read_csv(fname, parse_dates=[0], infer_datetime_format=True, cache_dates=False)
-    # make SCET
+    return make_df_Ls2SY(dfa)
     dfa["SCET"] = (dfa.date - pd.to_datetime("1970")).dt.total_seconds()
-    # make SY, Ls
     dfa["SY"], dfa["Ls"] = Ls2_to_SYLs(dfa["Ls2"])
     dfa["SY"] = dfa["SY"].astype('int8')
     return dfa
 
-dfa = load_ephem(ephem_file)
-#dfa = load_Ls_csv()
+#dfa = load_ephem(ephem_file)
+dfa = load_Ls_csv()
 
 # convert Ls2 and SCET
 def SCET_to_Ls2(scet, dfa=dfa):
-    if scet > dfa.SCET.max() or scet < dfa.SCET.min():
+    if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
     return np.interp(scet, dfa.SCET, dfa.Ls2)
 def Ls2_to_SCET(ls2, dfa=dfa):
-    if ls2 > dfa.Ls2.max() or ls2 < dfa.Ls2.min():
+    if np.any(ls2 > dfa.Ls2.max()) or np.any(ls2 < dfa.Ls2.min()):
         raise ValueError("Ls2 outside of range in data table.")
     return np.interp(ls2, dfa.Ls2, dfa.SCET)
 
 # convert Ls2 and JD
 def JD_to_SCET(jd, dfa=dfa):
-    if jd > dfa.JDUT.max() or jd < dfa.JDUT.min():
+    if np.any(jd > dfa.JDUT.max()) or np.any(jd < dfa.JDUT.min()):
         raise ValueError("JD outside of range in data table.")
     return np.interp(jd, dfa.JDUT, dfa.SCET)
 def SCET_to_JD(scet, dfa=dfa):
-    if scet > dfa.SCET.max() or scet < dfa.SCET.min():
+    if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
     return np.interp(scet, dfa.SCET, dfa.JDUT)
 
@@ -150,14 +163,12 @@ def datetime_to_SCET(pdt):
     if isinstance(pdt, datetime):
         pdt = pdt.replace(tzinfo=None)
     return pddt_scet(pd.to_datetime(pdt))
-    #return (pd.to_datetime(pdt.replace(tzinfo=None)) - pd.to_datetime("1970")).total_seconds()
 datetime_to_SCET = np.frompyfunc(datetime_to_SCET, nin=1, nout=1) 
 
 
 # convert datetime and Ls2
 def datetime_to_Ls2(pdt):
     return SCET_to_Ls2(datetime_to_SCET(pdt))
-    #return (pd.to_datetime(pdt.replace(tzinfo=None)) - pd.to_datetime("1970")).total_seconds()
 datetime_to_Ls2 = np.frompyfunc(datetime_to_Ls2, nin=1, nout=1) 
 def datetime_to_Ls(pdt, include_SY=False):
     sy, ls = Ls2_to_SYLs(SCET_to_Ls2(datetime_to_SCET(pdt)))
@@ -176,8 +187,9 @@ def datestr_to_Ls2(datestr):
     THIS FUNCION IS NOT GOOD....
     I think the issue here is with datetime assuming local time.
     """
-    print("The function datestr_to_Ls2 is inaccurate")
-    return SCET_to_Ls2(pd.to_datetime(datestr))
+    from warnings import warn
+    warn("The function datestr_to_Ls2 is inaccurate")
+    return datetime_to_Ls2(pd.to_datetime(datestr))
 def datestr_to_Ls(datestr, include_SY=False):
     sy, ls = Ls2_to_SYLs(datestr_to_Ls2(datestr))
     if include_SY:

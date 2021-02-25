@@ -1,5 +1,8 @@
 import numpy as np
+import saturnLs
 from saturnLs import *
+from importlib import reload
+reload(saturnLs)
 
 def t1():
     '''datetime_to_Ls2'''
@@ -37,7 +40,7 @@ def t11():
     return np.sqrt((dfa.SY-sy)**2 + (dfa.Ls-ls)**2)/(dfa.SY**2 + dfa.Ls**2).sum()
 def t12():
     '''SYLs_to_Ls2'''
-    return (SYLs_to_Ls2(dfa.SY, dfa.Ls) - dfa.Ls2)/dfa.Ls2.sum()
+    return (SYLs_to_Ls2(dfa.Ls, dfa.SY) - dfa.Ls2)/dfa.Ls2.sum()
 
 fcs = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12]
 for func in fcs:
