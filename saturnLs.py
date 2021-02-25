@@ -17,6 +17,22 @@ __all__ = [
     'dfa',
     ]
 
+# calendar and JD date of start of several "Saturn years"
+_sy_list = dict((
+    (0, {"date":"1921-04-12 00:26:26.287291050", "JD":2422791.5183598064}),
+    (1, {"date":"1950-09-21 19:02:45.138775468", "JD":2433546.293577995}),
+    (2, {"date":"1980-03-03 16:12:48.102177799", "JD":2444302.175556738}),
+    (3, {"date":"2009-08-11 02:04:25.416794062", "JD":2455054.586405287}),
+    (4, {"date":"2039-01-22 19:51:58.221873760", "JD":2465811.3277571974}),
+    (5, {"date":"2068-06-29 08:45:59.446648121", "JD":2476561.865271373}),
+    (6, {"date":"2097-12-13 07:54:51.884071350", "JD":2487320.829767177}),
+    (7, {"date":"2127-05-21 00:44:15.628328323", "JD":2498070.530736439}),
+    (8, {"date":"2156-11-05 03:53:00.718159676", "JD":2508831.6618138677}),
+    ))
+
+# DataFrame holding the date each "Saturn year" begins
+dfsy = pd.DataFrame.from_dict(_sy_list, orient='index').rename_axis(index="SY")
+
 #ephem_file = "saturn-from-titan-50_70.txt"
 ephem_file = "saturn-Ls-50_70.txt"
 
@@ -28,7 +44,7 @@ def Ls2_to_SYLs(ls2):
     SY = ls2//360 + 1
     return SY, ls2 - 360*(SY-1)
 
-def SYLs_to_Ls2(SY, Ls):
+def SYLs_to_Ls2(Ls, SY=3):
     return (SY-1)*360 + Ls
 
 def scan_ephem(fname):
@@ -62,7 +78,15 @@ def parse_ephem(s):
     return df[[c for c in df.columns if "Unnamed" not in c]]
 
 def make_Ls_df(df):
+    #dfa = df.rename(columns={"Date_UT_HRMNSCfff":"date",
+    #                             "App_Lon_Sun":"Ls",
+    #                             "Date_JDUT":"JDUT"})
+    #return dfa
+    # find first Ls zero-crossing in DataFrame to find beginning Saturn year
+    # should be 9-22-1950
+    # everything prior is negative
     lxneg = df.index < np.nonzero((df["App_Lon_Sun"] < 1).values)[0][0]
+    
     dfa = df.set_index("Date_UT_HRMNSCfff")["App_Lon_Sun"].reset_index()
     dfa["Ls2"] = dfa["App_Lon_Sun"]
     dfa["JDUT"] = df.Date_JDUT
@@ -77,8 +101,8 @@ def make_Ls_df(df):
     dfa = dfa.rename(columns={"Date_UT_HRMNSCfff":"date", "App_Lon_Sun":"Ls"})
     return dfa
 
-def load_ephem(fname):
-    return make_Ls_df(parse_ephem(scan_ephem(ephem_file)))
+def load_ephem(fname=ephem_file):
+    return make_Ls_df(parse_ephem(scan_ephem(fname)))
 
 def save_csv(df, fname="saturn-Ls.csv"):
     df.drop(columns=["Ls", "SY", "SCET"])[["date", "JDUT", "Ls2"]].\
@@ -92,19 +116,27 @@ def load_Ls_csv(fname="saturn-Ls.csv"):
     dfa["SY"] = dfa["SY"].astype('int8')
     return dfa
 
-#dfa = load_ephem(ephem_file)
-dfa = load_Ls_csv()
+dfa = load_ephem(ephem_file)
+#dfa = load_Ls_csv()
 
 # convert Ls2 and SCET
-def SCET_to_Ls2(scet):
+def SCET_to_Ls2(scet, dfa=dfa):
+    if scet > dfa.SCET.max() or scet < dfa.SCET.min():
+        raise ValueError("SCET outside of range in data table.")
     return np.interp(scet, dfa.SCET, dfa.Ls2)
-def Ls2_to_SCET(ls2):
+def Ls2_to_SCET(ls2, dfa=dfa):
+    if ls2 > dfa.Ls2.max() or ls2 < dfa.Ls2.min():
+        raise ValueError("Ls2 outside of range in data table.")
     return np.interp(ls2, dfa.Ls2, dfa.SCET)
 
 # convert Ls2 and JD
-def JD_to_SCET(jd):
+def JD_to_SCET(jd, dfa=dfa):
+    if jd > dfa.JDUT.max() or jd < dfa.JDUT.min():
+        raise ValueError("JD outside of range in data table.")
     return np.interp(jd, dfa.JDUT, dfa.SCET)
-def SCET_to_JD(scet):
+def SCET_to_JD(scet, dfa=dfa):
+    if scet > dfa.SCET.max() or scet < dfa.SCET.min():
+        raise ValueError("SCET outside of range in data table.")
     return np.interp(scet, dfa.SCET, dfa.JDUT)
 
 # convert SCET and datetime
@@ -127,8 +159,16 @@ def datetime_to_Ls2(pdt):
     return SCET_to_Ls2(datetime_to_SCET(pdt))
     #return (pd.to_datetime(pdt.replace(tzinfo=None)) - pd.to_datetime("1970")).total_seconds()
 datetime_to_Ls2 = np.frompyfunc(datetime_to_Ls2, nin=1, nout=1) 
+def datetime_to_Ls(pdt, include_SY=False):
+    sy, ls = Ls2_to_SYLs(SCET_to_Ls2(datetime_to_SCET(pdt)))
+    if include_SY:
+        return sy, ls
+    return ls
+datetime_to_Ls = np.frompyfunc(datetime_to_Ls, nin=1, nout=1) 
 def Ls2_to_datetime(Ls2):
     return SCET_to_datetime(Ls2_to_SCET(Ls2))
+def SYLs_to_datetime(ls, sy=3):
+    return SCET_to_datetime(Ls2_to_SCET(SYLs_to_Ls2(sy, ls)))
 
 # convert date string to Ls
 def datestr_to_Ls2(datestr):
@@ -138,7 +178,11 @@ def datestr_to_Ls2(datestr):
     """
     print("The function datestr_to_Ls2 is inaccurate")
     return SCET_to_Ls2(pd.to_datetime(datestr))
-
+def datestr_to_Ls(datestr, include_SY=False):
+    sy, ls = Ls2_to_SYLs(datestr_to_Ls2(datestr))
+    if include_SY:
+        return sy, ls
+    return ls
 #
 # horizons@ssd.jpl.nasa.gov
 # the funcions in this file use output from NASA Horizons using the following
@@ -164,7 +208,7 @@ R_T_S_ONLY= 'NO'
 REF_SYSTEM= 'J2000'
 CSV_FORMAT= 'YES'
 OBJ_DATA= 'YES'
-QUANTITIES= '14,15,19,20,32,41,44'
+QUANTITIES= '44'
 !$$EOF
 '''
 
