@@ -207,7 +207,7 @@ def save_csv_ephem(df, fname="saturn-Ls.csv"):
     df.drop(columns=["Ls2", "SY", "SCET"])[["date", "JDUT", "Ls"]].\
       to_csv(fname, index=False)
       
-def load_Ls_csv(fname=ephem_csv):
+def load_csv_ephem(fname=ephem_csv):
     '''Loads the ephemeris csv file saved by `save_csv_ephem`.'''
     dfa = pd.read_csv(fname, parse_dates=[0], infer_datetime_format=True, cache_dates=False)
     return make_df_Ls2SY(dfa)
@@ -219,7 +219,7 @@ def load_Ls_csv(fname=ephem_csv):
 # load the ephemeris data (Horizons output or csv)
 # this DataFrame is used in all of the Ls-time conversion functions by default
 #dfa = load_ephem(ephem_file)
-dfa = load_Ls_csv()
+dfa = load_csv_ephem()
 
 #######################
 # conversion functions
@@ -262,7 +262,7 @@ def SCET_to_JD(scet, dfa=dfa):
         raise ValueError("SCET outside of range in data table.")
     # interpolate JD
     if _HAS_SCIPY:
-        return interp1d(dfa.SCET, dfa.JD, kind='linear')(scet)
+        return interp1d(dfa.SCET, dfa.JDUT, kind='linear')(scet)
     return np.interp(scet, dfa.SCET, dfa.JDUT)
 
 
