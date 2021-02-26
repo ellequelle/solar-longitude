@@ -17,6 +17,12 @@ Values:
 Written 2021 by LE Hanson.
 """
 
+_HAS_SCIPY = True
+try:
+    from scipy.interpolate import interp1d
+except:
+    _HAS_SCIPY = False
+
 
 __all__ = [
     'datetime_to_Ls2', 'Ls2_to_datetime', 'datestr_to_Ls2',
@@ -148,12 +154,11 @@ def adjust_LT(df):
     ls2 = dfa["Ls2"]
 
     # interpolate Ls2
-    try: 
-        from scipy.interpolate import interp1d
+    if _HAS_SCIPY:
         finterp = interp1d(jdnew, ls2, kind='linear', fill_value='extrapolate')
         ls2new = finterp(dfa["JDUT"]) # calculate interpolated Ls2
-    except:
-        ls2new np.interp(dfa["JDUT"], jdnew, ls2)
+    else:
+        ls2new = np.interp(dfa["JDUT"], jdnew, ls2)
     dls2 = ls2new - ls2 # difference in original Ls2 and new Ls2
     dfa["Ls2"] = ls2new # replace Ls2 with corrected values
     dfa["Ls"] += dls2 # correct Ls
@@ -226,12 +231,18 @@ def SCET_to_Ls2(scet, dfa=dfa):
     """Convert SCET to Ls2."""
     if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
+    # interpolate Ls2
+    if _HAS_SCIPY:
+        return interp1d(dfa.SCET, dfa.Ls2, kind='linear')(scet)
     return np.interp(scet, dfa.SCET, dfa.Ls2)
 
 def Ls2_to_SCET(ls2, dfa=dfa):
     """Convert Ls2 to SCET."""
     if np.any(ls2 > dfa.Ls2.max()) or np.any(ls2 < dfa.Ls2.min()):
         raise ValueError("Ls2 outside of range in data table.")
+    # interpolate SCET
+    if _HAS_SCIPY:
+        return interp1d(dfa.Ls2, dfa.SCET, kind='linear')(ls2)
     return np.interp(ls2, dfa.Ls2, dfa.SCET)
 
 
@@ -240,12 +251,18 @@ def JD_to_SCET(jd, dfa=dfa):
     """Convert JD to SCET."""
     if np.any(jd > dfa.JDUT.max()) or np.any(jd < dfa.JDUT.min()):
         raise ValueError("JD outside of range in data table.")
+    # interpolate SCET
+    if _HAS_SCIPY:
+        return interp1d(dfa.JDUT, dfa.SCET, kind='linear')(jd)
     return np.interp(jd, dfa.JDUT, dfa.SCET)
 
 def SCET_to_JD(scet, dfa=dfa):
     """Convert SCET to JD."""
     if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
+    # interpolate JD
+    if _HAS_SCIPY:
+        return interp1d(dfa.SCET, dfa.JD, kind='linear')(scet)
     return np.interp(scet, dfa.SCET, dfa.JDUT)
 
 

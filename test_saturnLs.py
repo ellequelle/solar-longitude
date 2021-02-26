@@ -103,3 +103,7 @@ def run_tests():
     fcs = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12]
     for func in fcs:
         print(f"{func.__doc__}: ", np.sum(func()))
+
+
+if __name__ == "__main__":
+    run_tests()
