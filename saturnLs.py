@@ -141,15 +141,19 @@ def parse_ephem(s):
 def adjust_LT(df):
     """Account for light time.
     Adjust for distance of observer to Saturn using the column "one_way_LT"."""
-    from scipy.interpolate import interp1d
     dfa = df.copy()
     lt = dfa['one_way_LT'] # one-way light time
     # calculate JDUT adjusted for light time
     jdnew = dfa['JDUT'] - lt.dt.total_seconds()/86400 # correction to JDUT
     ls2 = dfa["Ls2"]
+
     # interpolate Ls2
-    finterp = interp1d(jdnew, ls2, kind='linear', fill_value='extrapolate')
-    ls2new = finterp(dfa["JDUT"]) # calculate interpolated Ls2
+    try: 
+        from scipy.interpolate import interp1d
+        finterp = interp1d(jdnew, ls2, kind='linear', fill_value='extrapolate')
+        ls2new = finterp(dfa["JDUT"]) # calculate interpolated Ls2
+    except:
+        ls2new np.interp(dfa["JDUT"], jdnew, ls2)
     dls2 = ls2new - ls2 # difference in original Ls2 and new Ls2
     dfa["Ls2"] = ls2new # replace Ls2 with corrected values
     dfa["Ls"] += dls2 # correct Ls
@@ -269,7 +273,7 @@ def Ls2_to_datetime(Ls2):
 
 def SYLs_to_datetime(ls, sy=3, dfa=dfa):
     """Convert SY and Ls to daetime."""
-    return SCET_to_datetime(Ls2_to_SCET(SYLs_to_Ls2(sy, ls)))
+    return SCET_to_datetime(Ls2_to_SCET(SYLs_to_Ls2(ls, sy)))
 
 
 # convert date string to Ls
