@@ -98,3 +98,11 @@ The data loaded into `df` can then be saved using the function `save_csv_ephem` 
 > saturnLs.save_csv_ephem(df, fname="saturn-Ls.csv")
 ```
 This saves a csv file with the `date`, `JDUT`, and `Ls` columns.
+
+# todo
+- [ ] make CLI for Ls, date, JD, SCET/UNIX conversion
+- [ ] function to automatically decide on a reasonable sampling interval to save in csv files given a desired precision
+- [ ] save Ls2 instead of Ls in csv files
+- [ ] use JD as the standard reference instead of SCET
+- [ ] improve API functions
+- [ ] find a better way of dealing with saturn years
