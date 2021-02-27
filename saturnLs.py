@@ -109,13 +109,13 @@ datetime_to_SCET = np.frompyfunc(datetime_to_SCET, nin=1, nout=1)
 # Ephemeris file functions
 ###########################
 
-def scan_ephem(fname):
+def scan_ephem(fname, header=False):
     '''Scan a JPL Horizons ephemeris file (csv format) and return the csv data.'''
     import re
     with open(fname, "r") as fin:
         lines = fin.readlines()
     soe = False
-    txt = []
+    txt, hed = [], []
     for ix in range(len(lines)):
         ll = lines[ix]
         if "$$SOE" in ll:
@@ -128,7 +128,12 @@ def scan_ephem(fname):
             soe = False
         elif soe:
             txt.append(ll.replace(", ,", ", NaN,"))
-    return "".join(txt).replace(", ,", ", NaN,")
+        elif header and ll[0] !=  '*':
+            hed.append(ll)
+    csv = "".join(txt).replace(", ,", ", NaN,")
+    if header:
+        return csv, "".join(hed)
+    return csv
 
 def parse_ephem(s):
     """Parse the csv portion of JPL Horizon output (from scan_ephem) and return as a pandas DataFrame."""

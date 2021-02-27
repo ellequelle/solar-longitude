@@ -1,0 +1,7 @@
+* text=auto
+*py text
+*csv text
+*txt text
+*png binary
+*gz binary
+*pdf binary
