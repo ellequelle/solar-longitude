@@ -174,7 +174,7 @@ def adjust_LT(df):
     dfa["Ls2"] = ls2new # replace Ls2 with corrected values
     dfa["Ls"] += dls2 # correct Ls
     # remove any nan's due to interpolation
-    dfa = dfa.loc[dfa[["Ls2", "Ls"]].dropna().index]
+    dfa = dfa.dropna(subset=["Ls2", "Ls"])
     # return without one_way_LT
     return dfa.drop(columns=['one_way_LT'])
 
@@ -182,7 +182,9 @@ def adjust_LT(df):
 def make_df_Ls2SY(df):
     """Calculate Ls2, SY, and SCET, referenced from "Saturn year" zero starting in 1921.
     Input is a DataFrame including fields ['date', 'JDUT', 'Ls']."""
-    dfa = pd.concat((df.copy(), dfsy.reset_index())).sort_values('JDUT')
+    _dfsy = dfsy.copy()
+    _dfsy["Ls"] = 0.0
+    dfa = pd.concat((df.copy(), _dfsy.reset_index())).sort_values('JDUT')
     dfa["SY"] = dfa["SY"].ffill()
     # if beyond SY table, estimate year
     # could use Ls to find actual start of year but this is easy
@@ -196,8 +198,11 @@ def make_df_Ls2SY(df):
     #dfa = dfa.dropna(thresh=2).reset_index(drop=True)
     dfa["Ls2"] = dfa["Ls"] + 360*(dfa["SY"]-1)
     dfa["SCET"] = (dfa.date - pd.to_datetime("1970")).dt.total_seconds()
+    # remove Ls = 0 rows
+    dfa = dfa.loc[~dfa["JDUT"].isin(dfsy["JDUT"])]
+    # adjust for light time if column "one_way_LT" is present
     if 'one_way_LT' in dfa:
-        dfa = adjust_LT(dfa)
+        dfa = adjust_LT(dfa) # adjust_LT removes "one_way_LT" column
     return dfa[['date','JDUT','SCET','Ls2','Ls','SY']]
 
 
@@ -212,20 +217,20 @@ def load_ephem(fname=ephem_file):
     '''load JPL HORIZONS csv output as a DataFrame'''
     return make_Ls_df2(parse_ephem(scan_ephem(fname)))
 
-def save_csv_ephem(df, fname="saturn-Ls.csv"):
+def save_csv_ephem(df, fname="saturn-Ls.csv", keep_date=False):
     '''Save ephemeris DataFrame as a csv file.
     This file loads significantly faster and is smaller than the raw Horizons output.'''
-    df.drop(columns=["Ls2", "SY", "SCET"])[["date", "JDUT", "Ls"]].\
-      to_csv(fname, index=False)
+    keepcols = ["JDUT", "Ls"]
+    if keep_date:
+        keepcols.insert(0, "date")
+    df[keepcols].to_csv(fname, index=False)
       
 def load_csv_ephem(fname=ephem_csv):
     '''Loads the ephemeris csv file saved by `save_csv_ephem`.'''
-    dfa = pd.read_csv(fname, parse_dates=[0], infer_datetime_format=True, cache_dates=False)
+    dfa = pd.read_csv(fname)
+    dfa["date"] = pd.to_datetime(dfa["JDUT"], unit='D', origin='julian')
     return make_df_Ls2SY(dfa)
-    dfa["SCET"] = (dfa.date - pd.to_datetime("1970")).dt.total_seconds()
-    dfa["SY"], dfa["Ls"] = Ls2_to_SYLs(dfa["Ls2"])
-    dfa["SY"] = dfa["SY"].astype('int8')
-    return dfa
+
 
 # load the ephemeris data (Horizons output or csv)
 # this DataFrame is used in all of the Ls-time conversion functions by default
