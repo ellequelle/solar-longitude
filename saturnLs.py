@@ -111,9 +111,15 @@ datetime_to_SCET = np.frompyfunc(datetime_to_SCET, nin=1, nout=1)
 
 def scan_ephem(fname, header=False):
     '''Scan a JPL Horizons ephemeris file (csv format) and return the csv data.'''
-    import re
-    with open(fname, "r") as fin:
-        lines = fin.readlines()
+    import re, gzip
+    if fname.endswith('.gz'):
+        with gzip.open(fname,  "rb") as fin:
+            lines = []
+            for line in fin.readlines():
+                lines.append(line.decode())
+    else:
+        with open(fname, "r") as fin:
+            lines = fin.readlines()
     soe = False
     txt, hed = [], []
     for ix in range(len(lines)):
