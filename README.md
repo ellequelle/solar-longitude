@@ -9,13 +9,13 @@ saturnLs converts between Saturn solar longitude, Ls, and date. It iterpolates e
 
 # definitions
 Temporary list of definitions from saturnLs.py:
- * Ls: Solar longitude, apparent longitude of the sun seen from Saturn as defined in JPL Horizons.
- * SY: Saturn year number where SY 1 is the Saturn year starting September 21, 1950.
- * Ls2: Solar longitude since the beginning of SY 1 starting September 21, 1950.
- * SCET: SpaceCraft Event Time (from Cassini), time in seconds since January 1, 1970 (UNIX epoch).
- * JD (or JDUT): Julian Date, UT.
- * datetime: Python datetime object (including numpy datetime64, pandas Timestamp, and astropy Time).
- * datestr (or datestring): Date and/or time as a string.
+ * `Ls`: Solar longitude, apparent longitude of the sun seen from Saturn as defined in JPL Horizons.
+ * `SY`: Saturn year number where SY 1 is the Saturn year starting September 21, 1950.
+ * `Ls2`: Solar longitude since the beginning of SY 1 starting September 21, 1950.
+ * `SCET`: SpaceCraft Event Time (from Cassini), time in seconds since January 1, 1970 (UNIX epoch).
+ * `JD` (or `JDUT`): Julian Date, UT.
+ * `datetime`: Python datetime object (including `numpy.datetime64`, `pandas.Timestamp`, and `astropy.time.Time`).
+ * `datestr` (or `datestring`): Date and/or time as a string.
 
 # usage
 Although there are plans to write a command-line tool using saturnLs, it is currently just a python library. Several functions are currently available for converting between Ls and dates, though there are plans to improve the API, possibly based on the [astropy](https://www.astropy.org) `Time` or the [pandas](https://pandas.pydata.org) `Timestamp` types.
