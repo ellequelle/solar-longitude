@@ -2,6 +2,61 @@
 
 saturnLs converts between Saturn solar longitude, Ls, and date. It iterpolates ephemeris output by [JPL HORIZONS](https://ssd.jpl.nasa.gov/?horizons) to convert between Ls and date with an error less than the day-to-day change in Ls. Functions are provided to convert among Ls, Gregorian calendar date, UNIX timestamp, and Julian date.
 
+## Command line usage
+The command line interface (CLI) attempts to distinguish between an Earth date or Ls and then converts to the other. If no argument is supplied, it returns the current Ls.
+
+```
+$ python saturnLs.py -h
+usage: saturnLs.py [-h] [-S SATURN_YEAR] [-j] [-s] [-x] [date_or_Ls [date_or_Ls ...]]
+
+positional arguments:
+  date_or_Ls                       earth date or Ls
+
+optional arguments:
+  -h, --help                       show this help message and exit
+  -S SATURN_YEAR, --saturn-year    SATURN_YEAR provide SY argument
+  -j, --julian                     use Julian date
+  -s, --simple                     simple output
+  -x, --extended                   extended date range (1890 to 2160)
+```
+
+### Examples
+Converting Earth date to Ls:
+```
+$ python saturnLs.py
+ Ls(now) = SY 3, 133.42°
+$ python saturnLs.py 2013-01-2
+ Ls(2013-01-2) = SY 3, 40.7329°
+$ python saturnLs.py -s 2013-01-2
+ 3 40.7329
+$ python saturnLs.py -x 1960-01-2
+ Ls(1960-01-2) = SY 1, 106.439°
+$ python saturnLs.py -x 1897-3 1955/4/18 'September 5, 1977' now
+ Ls(1897-3) = SY -1, 62.8762°
+ Ls(1955/4/18) = SY 1, 54.2137°
+ Ls(September 5, 1977) = SY 1, 327.966°
+ Ls(now) = SY 3, 133.417°
+```
+Converting Ls to Earth date:
+```
+$ python saturnLs.py 324
+ Date(SY 3, 324°) = 2036-04-07 15:12:44.677901268
+$ python saturnLs.py -j 324
+ Date(SY 3, 324°) = 2464791.161006
+$ python saturnLs.py -S 2 324.23
+ Date(SY 2, 324.23°) = 2006-10-30 10:48:27.212989330
+$ python saturnLs.py -sS 2 324.23
+ 2006-10-30 10:48:27.212989330
+$ python saturnLs.py -sxS 0 324.23
+ 1947-12-11 04:35:18.865188956
+$ python saturnLs.py -j -sxS 0 324.23
+ 2432530.691191
+$ python saturnLs.py -xS 0 324.23 83.45 61.2
+ Date(SY 0, 324.23°) = 1947-12-11 04:35:18.865188956
+ Date(SY 0, 83.45°) = 1928-06-14 11:03:26.997027636
+ Date(SY 0, 61.2°) = 1926-06-15 23:53:17.381674290
+ ``` 
+
 #### disclaimer
 *This grew out of my attempts to understand Saturn's orbit, specifically as it pertains to seasonal weather on Titan, but it is not being actively developed. I am posting this project in the hope that someone else may find it useful. Although I would like to develop this further to be more user-friendly and generalizable, that may never occur.*
 
