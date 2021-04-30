@@ -106,6 +106,7 @@ Dates are in [Universal Time (UT)](https://ssd.jpl.nasa.gov/?horizons_doc#time),
 
 # dependencies
 ## required
+* python>=3.6
 * [numpy](https://numpy.org)
 * [pandas](https://pandas.pydata.org)
 ## optional
@@ -155,7 +156,8 @@ The data loaded into `df` can then be saved using the function `save_csv_ephem` 
 This saves a csv file with the `date`, `JDUT`, and `Ls` columns.
 
 # todo
-- [ ] make CLI for Ls, date, JD, SCET/UNIX conversion
+- [x] make CLI for Ls, date, JD
+- [ ] add SCET/UNIX conversion to CLI
 - [ ] function to automatically decide on a reasonable sampling interval to save in csv files given a desired precision
 - [ ] save Ls2 instead of Ls in csv files
 - [ ] use JD as the standard reference instead of SCET
