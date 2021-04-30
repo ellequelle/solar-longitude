@@ -25,7 +25,7 @@ except:
 
 
 __all__ = [
-    'datetime_to_Ls2', 'Ls2_to_datetime', 'datestr_to_Ls2',
+    'datetime_to_Ls2', 'Ls2_to_datetime', 'datestr_to_Ls2', 'datestr_to_Ls',
     'SCET_to_datetime', 'datetime_to_SCET',
     'SCET_to_Ls2', 'Ls2_to_SCET',
     'JD_to_SCET', 'SCET_to_JD',
@@ -58,6 +58,7 @@ ephem_file_fine = "saturn-Ls-1970_2040-sol.txt"
 ephem_file = ephem_file_coarse
 
 # csv ephemeris files, reduced from Horizons output
+ephem_csv_long = "saturn-Ls-1890_2160-sol_sparse.csv"
 ephem_csv_coarse = "saturn-Ls-sparse.csv"
 ephem_csv_fine = "saturn-Ls.csv"
 # define default csv file to load
@@ -235,7 +236,11 @@ def load_csv_ephem(fname=ephem_csv):
 # load the ephemeris data (Horizons output or csv)
 # this DataFrame is used in all of the Ls-time conversion functions by default
 #dfa = load_ephem(ephem_file)
-dfa = load_csv_ephem()
+class dfa_store:
+    data = None
+    
+dfa = dfa_store()
+dfa.data = load_csv_ephem()
 
 #######################
 # conversion functions
@@ -245,41 +250,41 @@ dfa = load_csv_ephem()
 # convert Ls2 and SCET
 def SCET_to_Ls2(scet, dfa=dfa):
     """Convert SCET to Ls2."""
-    if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
+    if np.any(scet > dfa.data.SCET.max()) or np.any(scet < dfa.data.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
     # interpolate Ls2
     if _HAS_SCIPY:
-        return interp1d(dfa.SCET, dfa.Ls2, kind='linear')(scet)
-    return np.interp(scet, dfa.SCET, dfa.Ls2)
+        return interp1d(dfa.data.SCET, dfa.data.Ls2, kind='linear')(scet)
+    return np.interp(scet, dfa.data.SCET, dfa.data.Ls2)
 
 def Ls2_to_SCET(ls2, dfa=dfa):
     """Convert Ls2 to SCET."""
-    if np.any(ls2 > dfa.Ls2.max()) or np.any(ls2 < dfa.Ls2.min()):
+    if np.any(ls2 > dfa.data.Ls2.max()) or np.any(ls2 < dfa.data.Ls2.min()):
         raise ValueError("Ls2 outside of range in data table.")
     # interpolate SCET
     if _HAS_SCIPY:
-        return interp1d(dfa.Ls2, dfa.SCET, kind='linear')(ls2)
-    return np.interp(ls2, dfa.Ls2, dfa.SCET)
+        return interp1d(dfa.data.Ls2, dfa.data.SCET, kind='linear')(ls2)
+    return np.interp(ls2, dfa.data.Ls2, dfa.data.SCET)
 
 
 # convert Ls2 and JD
 def JD_to_SCET(jd, dfa=dfa):
     """Convert JD to SCET."""
-    if np.any(jd > dfa.JDUT.max()) or np.any(jd < dfa.JDUT.min()):
+    if np.any(jd > dfa.data.JDUT.max()) or np.any(jd < dfa.data.JDUT.min()):
         raise ValueError("JD outside of range in data table.")
     # interpolate SCET
     if _HAS_SCIPY:
-        return interp1d(dfa.JDUT, dfa.SCET, kind='linear')(jd)
-    return np.interp(jd, dfa.JDUT, dfa.SCET)
+        return interp1d(dfa.data.JDUT, dfa.data.SCET, kind='linear')(jd)
+    return np.interp(jd, dfa.data.JDUT, dfa.data.SCET)
 
 def SCET_to_JD(scet, dfa=dfa):
     """Convert SCET to JD."""
-    if np.any(scet > dfa.SCET.max()) or np.any(scet < dfa.SCET.min()):
+    if np.any(scet > dfa.data.SCET.max()) or np.any(scet < dfa.data.SCET.min()):
         raise ValueError("SCET outside of range in data table.")
     # interpolate JD
     if _HAS_SCIPY:
-        return interp1d(dfa.SCET, dfa.JDUT, kind='linear')(scet)
-    return np.interp(scet, dfa.SCET, dfa.JDUT)
+        return interp1d(dfa.data.SCET, dfa.data.JDUT, kind='linear')(scet)
+    return np.interp(scet, dfa.data.SCET, dfa.data.JDUT)
 
 
 # convert datetime and Ls2
@@ -355,3 +360,47 @@ QUANTITIES= '21,44'
 '''
 
 
+if __name__ == '__main__':
+    import argparse, re
+
+    parser = argparse.ArgumentParser()#exit_on_error=False)
+    parser.add_argument('-S', '--saturn-year', nargs=1, help="provide SY argument")
+    parser.add_argument('-j', '--julian', help="use Julian date", action='store_true')
+    parser.add_argument('-s', '--simple', help='simple output', action='store_true')
+    parser.add_argument('-x', '--extended', help='extended date range (1890 to 2160)', action='store_true')
+    parser.add_argument('date', nargs='*', help="earth date or Ls", default=['now'], metavar='date_or_Ls')
+
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError:
+        parser.print_help()
+
+    if args.extended:
+        dfa.data = load_csv_ephem(ephem_csv_long)
+
+    for date in args.date:
+        outpt = ''
+        # check if date is formatted like Ls
+        if re.match(r'\A[+-]*\d+[.]*\d*\Z', date):
+            if args.saturn_year is not None:
+                SY = int(args.saturn_year[0])
+            else:
+                SY, _ = datestr_to_Ls('now', include_SY=True)
+            Ls = date
+            date = SYLs_to_datetime(ls=float(Ls), sy=float(SY))
+            if args.julian:
+                date = f'{date.to_julian_date():f}'
+            outpt = f"{date}"
+            if not args.simple:
+                outpt = f" Date(SY {int(SY):d}, {float(Ls):g}°) = {date}"
+        else:
+            if args.saturn_year is not None:
+                print("Option -S only applies when calculating Earth dates.")
+                parser.exit()
+            if args.julian:
+                date = pd.to_datetime(date, unit='D', origin='julian')
+            SY, Ls = datestr_to_Ls(date, include_SY=True)
+            outpt = f"{int(SY):d} {Ls:g}"
+            if not args.simple:
+                outpt = f" Ls({date}) = SY {int(SY):d}, {Ls:g}°"
+        print(outpt)
