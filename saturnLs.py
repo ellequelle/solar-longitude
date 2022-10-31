@@ -37,16 +37,23 @@ __all__ = [
 
 # calendar and JD date of start of several "Saturn years"
 _sy_list = dict((
-    (-1, {"date":"1891-10-30 07:07:31.777902603", "JDUT":2412035.7968955776}),
-    (0,  {"date":"1921-04-12 00:26:22.458478928", "JDUT":2422791.5183154917}),
-    (1,  {"date":"1950-09-21 19:02:40.934159994", "JDUT":2433546.2935293308}),
-    (2,  {"date":"1980-03-03 16:12:43.076112986", "JDUT":2444302.175498566}),
-    (3,  {"date":"2009-08-11 02:04:21.114835262", "JDUT":2455054.5863554957}),
-    (4,  {"date":"2039-01-22 19:51:53.897613049", "JDUT":2465811.327707148}),
-    (5,  {"date":"2068-06-29 08:45:54.395126820", "JDUT":2476561.8652129066}),
-    (6,  {"date":"2097-12-13 07:54:47.293023586", "JDUT":2487320.82971404}),
-    (7,  {"date":"2127-05-21 00:44:11.711929321", "JDUT":2498070.53069111}),
-    (8,  {"date":"2156-11-05 03:52:56.824035645", "JDUT":2508831.661768797}),
+    (1,  {"date":"1774-01-03 02:22:37.246926848", "JDUT":2369002.59904221}),
+    (2,  {"date":"1803-06-18 11:01:00.319862784", "JDUT":2379759.95903148}),
+    (3,  {"date":"1832-12-03 18:51:45.533949952", "JDUT":2390521.28594368}),
+    (4,  {"date":"1862-05-17 06:22:58.443740160", "JDUT":2401277.76595421}),
+    (5,  {"date":"1891-10-30 07:07:31.777902603", "JDUT":2412035.7968955776}),
+    (6,  {"date":"1921-04-12 00:26:22.458478928", "JDUT":2422791.5183154917}),
+    (7,  {"date":"1950-09-21 19:02:40.934159994", "JDUT":2433546.2935293308}),
+    (8,  {"date":"1980-03-03 16:12:43.076112986", "JDUT":2444302.175498566}),
+    (9,  {"date":"2009-08-11 02:04:21.114835262", "JDUT":2455054.5863554957}),
+    (10, {"date":"2039-01-22 19:51:53.897613049", "JDUT":2465811.327707148}),
+    (11, {"date":"2068-06-29 08:45:54.395126820", "JDUT":2476561.8652129066}),
+    (12, {"date":"2097-12-13 07:54:47.293023586", "JDUT":2487320.82971404}),
+    (13, {"date":"2127-05-21 00:44:11.711929321", "JDUT":2498070.53069111}),
+    (14, {"date":"2156-11-05 03:52:56.824035645", "JDUT":2508831.661768797}),
+    (15, {"date":"2186-04-12 16:53:45.123068928", "JDUT":2519582.20399448}),
+    (16, {"date":"2215-10-02 16:21:44.526243840", "JDUT":2530346.18176535}),
+    (17, {"date":"2245-03-09 17:53:51.117792256", "JDUT":2541097.24573053}),
     ))
 
 # DataFrame holding the date each "Saturn year" begins
@@ -114,6 +121,32 @@ datetime_to_SCET = np.frompyfunc(datetime_to_SCET, nin=1, nout=1)
 
 def scan_ephem(fname, header=False):
     '''Scan a JPL Horizons ephemeris file (csv format) and return the csv data.'''
+    '''
+    expects ephemeris format returned by the following batch script,
+    send in email to horizons@ssd.jpl.nasa.gov with subject "BATCH-LONG"
+    !$$SOF
+    MAKE_EPHEM=YES
+    COMMAND=699
+    EPHEM_TYPE=OBSERVER
+    CENTER='500@399'
+    START_TIME='1750-01-01'
+    STOP_TIME='1800-01-01'
+    STEP_SIZE='12 HOURS'
+    QUANTITIES='41,44'
+    REF_SYSTEM='ICRF'
+    CAL_FORMAT='BOTH'
+    TIME_DIGITS='FRACSEC'
+    ANG_FORMAT='HMS'
+    APPARENT='AIRLESS'
+    RANGE_UNITS='AU'
+    SUPPRESS_RANGE_RATE='NO'
+    SKIP_DAYLT='NO'
+    SOLAR_ELONG='0,180'
+    EXTRA_PREC='NO'
+    RTS_ONLY='NO'
+    CSV_FORMAT='YES'
+    OBJ_DATA='YES'
+    '''
     import re, gzip
     if fname.endswith('.gz'):
         with gzip.open(fname,  "rb") as fin:
@@ -129,24 +162,26 @@ def scan_ephem(fname, header=False):
         ll = lines[ix]
         if "$$SOE" in ll:
             cols = lines[ix-2]
-            cols = cols.replace(" ","").replace("n.a.","NaN") 
+            #cols = cols.replace(" ","").replace("n.a.","NaN")
+            cols = cols.strip().replace(r", , , ", r", ").replace("n.a.","NaN")
+            cols = re.sub(r",\s*$", "", cols)
             cols = re.sub(",(\d[^,]+)", r",x\1", re.sub("[*\-]|_+", "_", re.sub("[%()./:]", "" ,cols)))
-            txt.append(cols)
+            txt.append(cols.strip())
             soe = True
         elif "$$EOE" in ll:
             soe = False
         elif soe:
-            txt.append(ll.replace(", ,", ", NaN,"))
+            txt.append(ll.replace(", , , ", ", ").strip().strip(','))
         elif header and ll[0] !=  '*':
-            hed.append(ll)
-    csv = "".join(txt).replace(", ,", ", NaN,")
+            hed.append(ll.strip().strip(','))
+    csv = "\n".join(txt).replace(", , , ", ", ")
     if header:
         return csv, "".join(hed)
     return csv
 
 def parse_ephem(s):
     """Parse the csv portion of JPL Horizon output (from scan_ephem) and return as a pandas DataFrame."""
-    df = pd.read_csv(StringIO(s), header=0, na_values="n.a.")
+    df = pd.read_csv(StringIO(s), header=0, skipinitialspace=True, sep=',')
     df = df.dropna("columns")
     if "Calendar_Date_TDB" in df:
         df["Calendar_Date_TDB"] = pd.to_datetime(df["Calendar_Date_TDB"].str[6:])
@@ -191,18 +226,18 @@ def make_df_Ls2SY(df):
     dfa["SY"] = dfa["SY"].ffill()
     # if beyond SY table, estimate year
     # could use Ls to find actual start of year but this is easy
-    if np.any(dfa.JDUT < dfsy.JDUT.min()) or np.any(dfa.JDUT > dfsy.JDUT.max()+10750):
-        jdsy0 = 2433546.2935293308 # SY 0 julian date
-        jdyear = 10755 # julian days in saturn year
-        lx = (dfa.JDUT < dfsy.JDUT.min()) | (dfa.JDUT > dfsy.JDUT.max()+10750)
+    if np.any(dfa.JDUT < _dfsy.JDUT.min()) or np.any(dfa.JDUT > _dfsy.JDUT.max()+10750):
+        jdyear = 10755.9 # julian days in saturn year
+        jdsy0 = 2369002.59904221-jdyear # SY 0 julian date
+        lx = (dfa.JDUT < _dfsy.JDUT.min()) | (dfa.JDUT > _dfsy.JDUT.max()+jdyear)
         # estimate SY
-        dfa.loc[lx, "SY"] = np.floor((dfa.loc[lx, "JDUT"] - jdsy0)/jdyear) + 1
+        dfa.loc[lx, "SY"] = np.floor((dfa.loc[lx, "JDUT"] - jdsy0)/jdyear)
     dfa = dfa.set_index('JDUT').truncate(df.JDUT.min(), df.JDUT.max()).reset_index()
     #dfa = dfa.dropna(thresh=2).reset_index(drop=True)
     dfa["Ls2"] = dfa["Ls"] + 360*(dfa["SY"]-1)
     dfa["SCET"] = (dfa.date - pd.to_datetime("1970")).dt.total_seconds()
     # remove Ls = 0 rows
-    dfa = dfa.loc[~dfa["JDUT"].isin(dfsy["JDUT"])]
+    dfa = dfa.loc[~dfa["JDUT"].isin(_dfsy["JDUT"])]
     # adjust for light time if column "one_way_LT" is present
     if 'one_way_LT' in dfa:
         dfa = adjust_LT(dfa) # adjust_LT removes "one_way_LT" column
@@ -364,13 +399,16 @@ QUANTITIES= '21,44'
 
 if __name__ == '__main__':
     import argparse, re
+    from datetime import datetime
+
+    now_date = datetime.now()
 
     parser = argparse.ArgumentParser()#exit_on_error=False)
     parser.add_argument('-S', '--saturn-year', nargs=1, help="provide SY argument")
     parser.add_argument('-j', '--julian', help="use Julian date", action='store_true')
     parser.add_argument('-s', '--simple', help='simple output', action='store_true')
     parser.add_argument('-x', '--extended', help='extended date range (1890 to 2160)', action='store_true')
-    parser.add_argument('date', nargs='*', help="earth date or Ls", default=['now'], metavar='date_or_Ls')
+    parser.add_argument('date', nargs='*', help="earth date or Ls", default=[now_date], metavar='date_or_Ls')
 
     try:
         args = parser.parse_args()
@@ -387,7 +425,7 @@ if __name__ == '__main__':
             if args.saturn_year is not None:
                 SY = int(args.saturn_year[0])
             else:
-                SY, _ = datestr_to_Ls('now', include_SY=True)
+                SY, _ = datestr_to_Ls(now_date, include_SY=True)
             Ls = date
             date = SYLs_to_datetime(ls=float(Ls), sy=float(SY))
             if args.julian:
