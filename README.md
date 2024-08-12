@@ -2,6 +2,8 @@
 
 saturnLs converts between Saturn solar longitude, Ls, and date. It iterpolates ephemeris output by [JPL HORIZONS](https://ssd.jpl.nasa.gov/?horizons) to convert between Ls and date with an error less than the day-to-day change in Ls. Functions are provided to convert among Ls, Gregorian calendar date, UNIX timestamp, and Julian date.
 
+I intend to update this to calculate solar longitude of the Saturn barycenter rather than the planet itself, since this is not affected by the orbits of the moons (see ["Additional details" section here](https://ellehanson.com/Ls/)), but for now that remains a project for future me.
+
 ## Command line usage
 The command line interface (CLI) attempts to distinguish between an Earth date or Ls and then converts to the other. If no argument is supplied, it returns the current Ls.
 
@@ -157,11 +159,8 @@ This saves a csv file with the `date`, `JDUT`, and `Ls` columns.
 
 # todo
 - [x] make CLI for Ls, date, JD
-- [ ] add SCET/UNIX conversion to CLI 
 - [ ] improve loading performance
-- [ ] function to automatically decide on a reasonable sampling interval to save in csv files given a desired precision
-- [ ] save Ls2 instead of Ls in csv files
-- [ ] use JD as the standard reference instead of SCET
-- [ ] improve API functions
 - [ ] find a better way of dealing with saturn years
-
+- [ ] make more portable
+- [ ] switch to "mean solar longitude" (planet system barycenter)
+- [ ] generalize to other planets
